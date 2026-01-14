@@ -1,0 +1,29 @@
+# Smoke Test Configuration
+# Used by CI for quick validation
+# Minimal backtest to ensure core systems work
+
+exchange: "binance"
+symbols: ["BTCUSDT"]
+timeframe: "15m"
+start_date: "2025-01-01"
+end_date: "2025-01-03"  # Just 2 days for quick test
+
+strategy:
+  type: "scalping_ema_rsi"
+  params:
+    ema_fast: 12
+    ema_slow: 26
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+
+execution:
+  starting_balance: 1000.0
+  slippage: 0.0005
+  commission_rate: 0.0005
+  allow_shorting: false
+  log_trades: true
+  log_file: "logs/smoke_test_trades.csv"
+
+risk:
+  config_file: "config/risk.json"

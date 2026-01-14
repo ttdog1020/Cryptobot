@@ -1,0 +1,2 @@
+timestamp,event,detail,equity
+2025-12-06T02:39:20.555941+00:00,MAX_TRADES_PER_RUN,Max trades per run reached (1 >= 1),1000.0

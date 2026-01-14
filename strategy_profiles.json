@@ -1,0 +1,119 @@
+{
+  "ETH/USDT": {
+    "15m": {
+      "fast": 12,
+      "slow": 26,
+      "signal": 9,
+      "rsi_buy": 32.0,
+      "rsi_exit": 58.0,
+      "adx_min": 22.0,
+      "trend_ema_fast": 20,
+      "trend_ema_slow": 50,
+      "atr_period": 14,
+      "atr_vol_thresh": 0.0015,
+      "rsi_mom_lookback": 3,
+      "macd_hist_lookback": 3,
+      "di_margin": 2.0,
+      "risk_per_trade_pct": 1.0,
+      "sl_atr_mult": 2.0,
+      "tp_atr_mult": 3.0,
+      "min_position_size_usd": 50.0,
+      "regimes": {
+        "TRENDING": {
+          "adx_min": 22.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        },
+        "RANGING": {
+          "adx_min": 15.0,
+          "rsi_buy": 30.0,
+          "rsi_exit": 55.0,
+          "tp_atr_mult": 2.0
+        },
+        "BREAKOUT": {
+          "adx_min": 25.0,
+          "rsi_buy": 40.0,
+          "rsi_exit": 70.0,
+          "sl_atr_mult": 2.5,
+          "tp_atr_mult": 4.0
+        }
+      }
+    }
+  },
+  "BTC/USDT": {
+    "15m": {
+      "fast": 12,
+      "slow": 21,
+      "signal": 9,
+      "rsi_buy": 35.0,
+      "rsi_exit": 60.0,
+      "adx_min": 25.0,
+      "trend_ema_fast": 20,
+      "trend_ema_slow": 50,
+      "atr_period": 14,
+      "atr_vol_thresh": 0.0015,
+      "rsi_mom_lookback": 3,
+      "macd_hist_lookback": 3,
+      "di_margin": 2.0,
+      "risk_per_trade_pct": 1.0,
+      "sl_atr_mult": 2.0,
+      "tp_atr_mult": 3.0,
+      "min_position_size_usd": 50.0,
+      "regimes": {
+        "TRENDING": {
+          "adx_min": 25.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        },
+        "RANGING": {
+          "adx_min": 25.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        },
+        "BREAKOUT": {
+          "adx_min": 25.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        }
+      }
+    }
+  },
+  "SOL/USDT": {
+    "15m": {
+      "fast": 16,
+      "slow": 35,
+      "signal": 9,
+      "rsi_buy": 35.0,
+      "rsi_exit": 60.0,
+      "adx_min": 20.0,
+      "trend_ema_fast": 20,
+      "trend_ema_slow": 50,
+      "atr_period": 14,
+      "atr_vol_thresh": 0.0015,
+      "rsi_mom_lookback": 3,
+      "macd_hist_lookback": 3,
+      "di_margin": 2.0,
+      "risk_per_trade_pct": 1.0,
+      "sl_atr_mult": 2.0,
+      "tp_atr_mult": 3.0,
+      "min_position_size_usd": 50.0,
+      "regimes": {
+        "TRENDING": {
+          "adx_min": 20.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        },
+        "RANGING": {
+          "adx_min": 20.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        },
+        "BREAKOUT": {
+          "adx_min": 20.0,
+          "rsi_buy": 35.0,
+          "rsi_exit": 60.0
+        }
+      }
+    }
+  }
+}

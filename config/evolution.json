@@ -1,0 +1,32 @@
+{
+  "_note": "Evolution thresholds tuned for realistic live trading behavior, not hyper-optimistic backtest curves. Safety enforced via risk.json.",
+  "enable_auto_evolution": true,
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "LINKUSDT",
+    "AVAXUSDT",
+    "MATICUSDT",
+    "ADAUSDT"
+  ],
+  "decay_health_thresholds": [
+    "degraded"
+  ],
+  "optimizer_window": {
+    "start_days_ago": 30,
+    "end_days_ago": 0
+  },
+  "min_trades": 30,
+  "min_return_pct": 4.0,
+  "max_dd_pct": 20.0,
+  "min_improvement_return_pct": 3.0,
+  "max_allowed_dd_increase_pct": 0.5,
+  "archive_dir": "config/strategy_profiles/archive",
+  "log_dir": "logs/evolution",
+  "dry_run": true,
+  "require_confirmation": false
+}

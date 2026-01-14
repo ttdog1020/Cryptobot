@@ -1,0 +1,83 @@
+# MODULE 16: Live Trading Configuration
+#
+# WebSocket streaming and live strategy execution settings.
+# NO REAL ORDERS are placed - this is for monitoring and signal generation only.
+
+# Exchange settings
+# Module 26: Support for Binance US to avoid HTTP 451 errors
+exchange: binance_us
+
+# Symbols to monitor
+# Module 25: 10 high-liquidity symbols for multi-asset paper trading
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+  - SOLUSDT
+  - BNBUSDT
+  - XRPUSDT
+  - DOGEUSDT
+  - LINKUSDT
+  - AVAXUSDT
+  - MATICUSDT
+  - ADAUSDT
+
+# Timeframe for candles (1m, 3m, 5m, 15m, 1h, etc.)
+# For scalping, use 1m or 3m
+timeframe: "1m"
+
+# Module 26: WebSocket base URL (optional, defaults based on exchange)
+# Binance US endpoint to avoid geo-restrictions
+# Patch: Use /stream endpoint directly for multi-stream support
+ws_base_url: "wss://stream.binance.us:9443/stream"
+
+# WebSocket connection settings
+reconnect_delay: 3        # Initial reconnect delay (seconds)
+max_retries: 5            # Max reconnection attempts (0 = infinite)
+heartbeat: 30             # Heartbeat ping interval (seconds)
+
+# Strategy configuration
+strategy:
+  type: scalping_ema_rsi  # Strategy name
+  
+  # Strategy-specific parameters (optional - uses defaults from config/strategies/scalping.yaml)
+  params:
+    # Uncomment to override default strategy parameters:
+    # ema_fast: 5
+    # ema_slow: 9
+    # rsi_period: 7
+    # rsi_overbought: 70
+    # rsi_oversold: 30
+    # volume_multiplier: 1.5
+    # atr_period: 14
+    # atr_min_threshold: 0.2
+    # sl_atr_multiple: 0.25
+    # tp_atr_multiple: 0.5
+
+# Risk management configuration
+risk:
+  config_file: config/risk.json  # Path to risk config
+
+# Execution configuration (Module 19 + 25: Multi-Asset Paper Trading)
+execution:
+  starting_balance: 10000.0       # $10,000 total (~$1,000 per symbol across 10 coins)
+  slippage: 0.0005                # 0.05% slippage per trade
+  commission_rate: 0.0005         # 0.05% commission per trade
+  allow_shorting: true            # Enable SHORT positions
+  log_trades: true                # Log all paper trades to CSV
+  log_file: null                  # Auto-generate session-based log path
+
+# Logging settings
+logging:
+  level: INFO               # DEBUG, INFO, WARNING, ERROR
+  log_file: logs/live_runtime.log
+
+# Optional: Advanced settings
+advanced:
+  # Buffer size per symbol (candles to keep in memory)
+  buffer_size: 500
+  
+  # Minimum candles required before strategy execution
+  min_candles_required: 30
+  
+  # Status update frequency (candles)
+  status_update_interval: 10

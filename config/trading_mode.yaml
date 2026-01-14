@@ -1,0 +1,58 @@
+# MODULE 24: Trading Mode Configuration
+#
+# Controls trading behavior across all runtime modes.
+# This is the primary safety gate for live trading.
+
+# Trading mode: monitor, paper, dry_run, live
+# - monitor: No orders, only signal generation and logging
+# - paper: Full simulation with PaperTrader (virtual fills)
+# - dry_run: Uses exchange client but only logs orders (no network calls)
+# - live: Real exchange orders (REQUIRES allow_live_trading=true)
+mode: "paper"
+
+# Default strategy to use
+default_strategy: "scalping_ema_rsi"
+
+# Live trading master gate
+# MUST be set to true to enable live mode
+# This is a hard safety requirement
+allow_live_trading: false
+
+# Global safety limits
+# These apply to all trading modes (monitor excepted)
+
+# Maximum daily loss as percentage of starting equity
+# Trading will halt if this limit is exceeded
+# Example: 0.02 = 2% maximum daily loss
+max_daily_loss_pct: 0.02
+
+# Maximum risk per trade as percentage of equity
+# Should align with risk.json default_risk_per_trade
+# Example: 0.01 = 1% risk per trade
+max_risk_per_trade_pct: 0.01
+
+# Maximum number of concurrent open trades
+# Module 25: Set to 10 to match symbol count (one position per symbol max)
+max_open_trades: 10
+
+# Maximum total exposure as percentage of equity
+# Sum of all open position values / equity
+# Example: 0.2 = 20% of equity can be in open positions
+max_exposure_pct: 0.20
+
+# Kill switch environment variable name
+# Set this environment variable to "1", "true", or "yes" to halt all trading
+# Example (bash): export CRYPTOBOT_KILL_SWITCH=1
+# Example (PowerShell): $env:CRYPTOBOT_KILL_SWITCH="1"
+kill_switch_env_var: "CRYPTOBOT_KILL_SWITCH"
+
+# Additional safety settings
+
+# Require manual confirmation before entering live mode
+require_live_confirmation: true
+
+# Log all order decisions (even rejected ones)
+log_all_decisions: true
+
+# Halt on consecutive order failures
+max_consecutive_failures: 3

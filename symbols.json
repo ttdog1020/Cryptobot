@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "symbol": "ETH/USDT", "timeframe": "15m" },
+    { "symbol": "BTC/USDT", "timeframe": "15m" },
+    { "symbol": "SOL/USDT", "timeframe": "15m" }
+  ]
+}

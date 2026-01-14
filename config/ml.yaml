@@ -1,0 +1,95 @@
+# MODULE 17: ML Configuration
+#
+# Configuration for machine learning-based trading strategies.
+
+# Model Settings
+model_name: "baseline_rf"  # Name of trained model to load
+min_confidence: 0.60       # Minimum prediction confidence (0.0 to 1.0) - Module 19: conservative for live
+
+# Feature Engineering
+feature_window: 30         # Rolling window size for time-series features
+prediction_horizon: 1      # How many periods ahead to predict
+
+# Feature Configuration
+features:
+  # EMA periods to calculate
+  ema_periods: [5, 9, 20, 50]
+  
+  # RSI periods
+  rsi_periods: [7, 14]
+  
+  # ATR periods
+  atr_periods: [7, 14]
+  
+  # Additional feature flags
+  include_volume: true
+  include_momentum: true
+  include_volatility: true
+
+# Training Settings (for train.py)
+training:
+  train_ratio: 0.8         # Train/test split ratio
+  remove_outliers: true    # Remove extreme outliers during preprocessing
+  
+  # Model hyperparameters
+  hyperparams:
+    # Random Forest
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 20
+    min_samples_leaf: 10
+    random_state: 42
+    
+    # Logistic Regression (alternative)
+    # C: 1.0
+    # max_iter: 1000
+
+# Signal Thresholds
+thresholds:
+  # Minimum future return to consider LONG/SHORT (for labeling)
+  label_threshold: 0.001   # 0.1% 
+  
+  # Confidence-based position sizing (future use)
+  high_confidence: 0.75    # > 75% confidence = full size
+  medium_confidence: 0.60  # 60-75% = half size
+  low_confidence: 0.55     # 55-60% = quarter size
+
+# Risk Management (integrates with Module 14 RiskEngine)
+risk:
+  # ATR-based stop-loss/take-profit multipliers
+  base_sl_atr_mult: 1.5
+  base_tp_atr_mult: 3.0
+  
+  # Confidence adjustment for stops
+  # Higher confidence = tighter stops (more aggressive)
+  confidence_sl_adjustment: 0.3
+  
+  # Fallback percentage stops (when ATR unavailable)
+  fallback_sl_pct: 0.02    # 2%
+  fallback_tp_pct: 0.04    # 4%
+
+# Model Registry
+registry:
+  models_dir: "models/"
+  auto_backup: true        # Backup old models before overwrite
+  max_models: 10           # Maximum models to keep
+
+# Logging
+logging:
+  log_predictions: true    # Log all predictions
+  log_features: false      # Log feature values (verbose)
+  log_level: "INFO"
+
+# Advanced Settings
+advanced:
+  # Feature scaling
+  scale_features: true
+  scaler_type: "standard"  # standard, minmax, robust
+  
+  # Class imbalance handling
+  handle_class_imbalance: true
+  balancing_method: "class_weight"  # class_weight, smote, undersample
+  
+  # Model ensemble (future)
+  use_ensemble: false
+  ensemble_models: []

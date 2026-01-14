@@ -1,0 +1,3 @@
+"""
+Rule-based trading strategies.
+"""
