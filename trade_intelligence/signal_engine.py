@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, Any
 from pathlib import Path
 import json
 import logging
+from datetime import datetime, timezone
 
 from .signal_model import TradeSignal, SignalDirection, RegimeType, RiskFlags
 from .confidence import ConfidenceCalculator, DEFAULT_CONFIDENCE_CONFIG
@@ -36,6 +37,8 @@ class SignalEngine:
         confidence_config: Optional[Dict[str, float]] = None,
         vol_spike_threshold: float = 1.5,
         drawdown_threshold: float = 0.10,
+        decay_half_life_seconds: Optional[float] = 900.0,
+        confidence_bucket_thresholds: Optional[Dict[str, float]] = None,
     ):
         """
         Initialize signal engine.
@@ -44,6 +47,8 @@ class SignalEngine:
             confidence_config: Override DEFAULT_CONFIDENCE_CONFIG
             vol_spike_threshold: Volatility spike multiplier
             drawdown_threshold: Drawdown threshold (e.g., 0.10 = 10%)
+            decay_half_life_seconds: Optional half-life (seconds) for conviction decay; None to disable decay
+            confidence_bucket_thresholds: Optional thresholds for confidence buckets (low/high)
         """
         self.aggregator = SignalAggregator()
         self.confidence_calc = ConfidenceCalculator(confidence_config)
@@ -51,6 +56,8 @@ class SignalEngine:
             vol_spike_threshold=vol_spike_threshold,
             drawdown_threshold=drawdown_threshold,
         )
+        self.decay_half_life_seconds = decay_half_life_seconds
+        self.confidence_bucket_thresholds = confidence_bucket_thresholds
     
     def register_strategy(
         self,
@@ -73,6 +80,8 @@ class SignalEngine:
         volume_sma: Optional[float] = None,
         current_equity: Optional[float] = None,
         peak_equity: Optional[float] = None,
+        timeframe_signals: Optional[Dict[str, str]] = None,
+        signal_timestamp: Optional[str] = None,
     ) -> TradeSignal:
         """
         Generate a single trade signal.
@@ -109,6 +118,10 @@ class SignalEngine:
             volatility_percentile=volatility_percentile,
             win_rate=None,  # Could add historical win rate later
         )
+
+        # Step 2b: Apply decay based on signal age
+        age_seconds = self._compute_age_seconds(signal_timestamp)
+        decayed_conviction = self._apply_decay(conviction, age_seconds)
         
         # Step 3: Analyze risk
         risk_context = self.risk_analyzer.analyze(
@@ -148,54 +161,123 @@ class SignalEngine:
             ),
             strategy_names=list(strategy_outputs.keys()),
             volatility_percentile=volatility_percentile,
+            timeframe_alignment_score=self._compute_timeframe_alignment(
+                direction,
+                timeframe_signals,
+            ),
+            age_seconds=age_seconds,
+            decayed_conviction=decayed_conviction,
+            confidence_bucket_thresholds=self.confidence_bucket_thresholds,
         )
         
         # Step 6: Generate rationale
-        signal.rationale = self._generate_rationale(signal, agg_result)
+        explanation = self._generate_explanation(signal, agg_result)
+        signal.rationale = explanation
+        signal.explanation = explanation
         
         return signal
+
+    def _compute_timeframe_alignment(
+        self,
+        primary_direction: SignalDirection,
+        timeframe_signals: Optional[Dict[str, str]] = None,
+    ) -> Optional[float]:
+        """Compute agreement across multiple timeframes.
+        
+        Args:
+            primary_direction: Direction of the aggregated signal
+            timeframe_signals: Optional mapping timeframe -> direction string
+        
+        Returns:
+            Alignment score in [0,1], or None if no data.
+        """
+        if not timeframe_signals:
+            return None
+
+        directions = []
+        for tf_dir in timeframe_signals.values():
+            try:
+                directions.append(SignalDirection[tf_dir])
+            except Exception:
+                continue
+        if not directions:
+            return None
+
+        total = len(directions)
+        if total == 0:
+            return None
+
+        matches = sum(1 for d in directions if d == primary_direction)
+        return round(matches / total, 3)
+
+    def _compute_age_seconds(self, signal_timestamp: Optional[str]) -> float:
+        """Compute age in seconds from provided timestamp to now."""
+        if not signal_timestamp:
+            return 0.0
+        try:
+            parsed = datetime.fromisoformat(signal_timestamp.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            return max(0.0, (now - parsed).total_seconds())
+        except Exception:
+            return 0.0
+
+    def _apply_decay(self, conviction: float, age_seconds: float) -> float:
+        """Apply exponential decay to conviction based on age."""
+        if self.decay_half_life_seconds is None or self.decay_half_life_seconds <= 0:
+            return conviction
+        decay_factor = 0.5 ** (age_seconds / self.decay_half_life_seconds)
+        return max(0.0, conviction * decay_factor)
     
-    def _generate_rationale(
+    def _generate_explanation(
         self,
         signal: TradeSignal,
         agg_result: Dict[str, Any],
     ) -> str:
-        """Generate human-readable rationale for signal."""
-        rationale_parts = []
-        
-        # Direction + agreement
+        """Generate human-readable explanation for signal."""
+        parts = []
+
+        # Strategy agreement
         if signal.direction == SignalDirection.FLAT:
-            rationale_parts.append("No clear consensus")
+            parts.append("Consensus: FLAT (no clear bias)")
         else:
-            rationale_parts.append(
-                f"{signal.direction.value} signal from "
-                f"{signal.agreeing_strategies}/{signal.num_strategies} strategies"
+            parts.append(
+                f"Consensus: {signal.direction.value} from {signal.agreeing_strategies}/{signal.num_strategies}"
             )
-        
-        # Confidence
-        rationale_parts.append(
-            f"conviction {signal.conviction:.1%} ({signal.confidence_category.value})"
-        )
-        
+
+        # Conviction + decay
+        base = f"Conviction: {signal.conviction:.2f} ({signal.confidence_category.value})"
+        if signal.decayed_conviction is not None and signal.decayed_conviction != signal.conviction:
+            base += f" → decayed {signal.decayed_conviction:.2f}"
+        parts.append(base)
+
+        # Timeframe alignment
+        if signal.timeframe_alignment_score is not None:
+            parts.append(f"TF alignment: {signal.timeframe_alignment_score:.0%}")
+
+        # Regime
+        if signal.regime != RegimeType.NEUTRAL:
+            parts.append(f"Regime: {signal.regime.value.lower()}")
+
         # Risk flags
         risk_flags = []
         if signal.risk_flags.volatility_spike:
-            risk_flags.append("vol↑")
+            risk_flags.append("vol spike")
         if signal.risk_flags.low_liquidity:
-            risk_flags.append("low-liq")
+            risk_flags.append("low liq")
         if signal.risk_flags.drawdown_risk:
-            risk_flags.append("dd-risk")
+            risk_flags.append("drawdown")
         if signal.risk_flags.conflicting_signals:
             risk_flags.append("conflict")
-        
         if risk_flags:
-            rationale_parts.append(f"[{','.join(risk_flags)}]")
-        
-        # Regime
-        if signal.regime != RegimeType.NEUTRAL:
-            rationale_parts.append(f"in {signal.regime.value.lower()}")
-        
-        return " | ".join(rationale_parts)
+            parts.append(f"Risks: {', '.join(risk_flags)}")
+        else:
+            parts.append("Risks: none detected")
+
+        # Age
+        if signal.age_seconds is not None and signal.age_seconds > 0:
+            parts.append(f"Age: {signal.age_seconds:.0f}s")
+
+        return " | ".join(parts)
     
     def generate_signal_batch(
         self,

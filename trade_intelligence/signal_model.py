@@ -10,6 +10,11 @@ from dataclasses import dataclass, asdict, field
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 
+DEFAULT_CONFIDENCE_BUCKETS = {
+    'low': 0.4,
+    'high': 0.7,
+}
+
 
 class SignalDirection(str, Enum):
     """Trade signal direction."""
@@ -86,8 +91,14 @@ class TradeSignal:
     
     # Derived
     confidence_category: SignalConfidence = field(init=False)
+    confidence_bucket: str = field(init=False)
     regime: RegimeType = RegimeType.NEUTRAL
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    age_seconds: Optional[float] = None
+    decayed_conviction: Optional[float] = None
+    timeframe_alignment_score: Optional[float] = None
+    explanation: str = ""
+    confidence_bucket_thresholds: Optional[Dict[str, float]] = field(default=None, repr=False, compare=False)
     
     # Strategy agreement
     num_strategies: int = 1
@@ -116,6 +127,21 @@ class TradeSignal:
             self.confidence_category = SignalConfidence.LOW
         else:
             self.confidence_category = SignalConfidence.VERY_LOW
+
+        thresholds = self.confidence_bucket_thresholds or DEFAULT_CONFIDENCE_BUCKETS
+        low = thresholds.get('low', DEFAULT_CONFIDENCE_BUCKETS['low'])
+        high = thresholds.get('high', DEFAULT_CONFIDENCE_BUCKETS['high'])
+        if self.conviction >= high:
+            self.confidence_bucket = "HIGH"
+        elif self.conviction >= low:
+            self.confidence_bucket = "MEDIUM"
+        else:
+            self.confidence_bucket = "LOW"
+
+        if self.decayed_conviction is None:
+            self.decayed_conviction = self.conviction
+        if self.age_seconds is None:
+            self.age_seconds = 0.0
     
     def to_dict(self) -> Dict[str, Any]:
         """Export to JSON-serializable dictionary."""
@@ -123,10 +149,14 @@ class TradeSignal:
             'direction': self.direction.value,
             'conviction': round(self.conviction, 3),
             'confidence_category': self.confidence_category.value,
+            'confidence_bucket': self.confidence_bucket,
             'symbol': self.symbol,
             'timeframe': self.timeframe,
             'regime': self.regime.value,
             'timestamp': self.timestamp,
+            'age_seconds': round(self.age_seconds, 3) if self.age_seconds is not None else None,
+            'decayed_conviction': round(self.decayed_conviction, 3) if self.decayed_conviction is not None else None,
+            'timeframe_alignment_score': round(self.timeframe_alignment_score, 3) if self.timeframe_alignment_score is not None else None,
             'strategy_agreement': {
                 'num_strategies': self.num_strategies,
                 'agreeing': self.agreeing_strategies,
@@ -140,6 +170,7 @@ class TradeSignal:
                 'strategies': self.strategy_names,
                 'tags': self.tags,
                 'rationale': self.rationale,
+                'explanation': self.explanation,
                 'context': self.metadata,
             }
         }
