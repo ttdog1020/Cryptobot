@@ -1,0 +1,112 @@
+{
+  "_metadata": {
+    "description": "Example trading configuration with safe default parameters",
+    "version": "1.0",
+    "last_updated": "2026-01-14",
+    "usage": "Copy this to 'config/trading_config.json' and customize as needed"
+  },
+
+  "_documentation": {
+    "risk_management": "Controls how much capital is risked per trade and overall",
+    "position_sizing": "Determines trade sizes based on account equity and risk tolerance",
+    "stop_loss": "Automatic exit to limit losses on unfavorable trades",
+    "take_profit": "Automatic exit to lock in gains on favorable trades",
+    "trading_mode": "Controls whether bot runs in paper/live mode with safety gates"
+  },
+
+  "risk_management": {
+    "base_account_size": 10000.0,
+    "_comment_base_account_size": "Starting account size in USD for backtests",
+
+    "default_risk_per_trade": 0.01,
+    "_comment_default_risk_per_trade": "Fraction of account to risk per trade (0.01 = 1%). Lower = more conservative",
+
+    "max_exposure": 0.15,
+    "_comment_max_exposure": "Maximum total exposure as fraction of account (0.15 = 15%). Prevents over-leverage",
+
+    "default_slippage": 0.001,
+    "_comment_default_slippage": "Expected slippage in decimal form (0.001 = 0.1%). Market orders experience slippage",
+
+    "min_position_size_usd": 10.0,
+    "_comment_min_position_size_usd": "Minimum position size in USD to prevent dust trades"
+  },
+
+  "stop_loss": {
+    "default_sl_atr_mult": 1.5,
+    "_comment_default_sl_atr_mult": "Stop-loss distance in ATR units. Higher = wider stops, lower win rate but better winners",
+
+    "enable_trailing_stop": true,
+    "_comment_enable_trailing_stop": "Enable percentage-based trailing stop to lock in profits",
+
+    "trailing_stop_pct": 0.02,
+    "_comment_trailing_stop_pct": "Trailing stop distance as decimal (0.02 = 2% trail from highest price)"
+  },
+
+  "take_profit": {
+    "default_tp_atr_mult": 3.0,
+    "_comment_default_tp_atr_mult": "Take-profit distance in ATR units. Should be > sl_atr_mult for positive risk/reward"
+  },
+
+  "trading_mode": {
+    "mode": "paper",
+    "_comment_mode": "Trading mode: 'monitor' (signals only), 'paper' (simulation), 'live' (real money)",
+
+    "allow_live_trading": false,
+    "_comment_allow_live_trading": "Safety gate. Must be true AND mode='live' to enable real trading",
+
+    "max_daily_loss_pct": 0.02,
+    "_comment_max_daily_loss_pct": "Halt trading if daily loss exceeds this percentage (0.02 = 2%)",
+
+    "max_risk_per_trade_pct": 0.01,
+    "_comment_max_risk_per_trade_pct": "Hard limit on risk per trade (0.01 = 1%)",
+
+    "max_open_trades": 5,
+    "_comment_max_open_trades": "Maximum number of concurrent open positions",
+
+    "max_exposure_pct": 0.15,
+    "_comment_max_exposure_pct": "Maximum total exposure as percentage of equity (0.15 = 15%)"
+  },
+
+  "strategy": {
+    "default_strategy": "scalping_ema_rsi",
+    "_comment_default_strategy": "Name of the default strategy to use",
+
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "_comment_symbols": "List of trading pairs to monitor",
+
+    "timeframe": "1h",
+    "_comment_timeframe": "Candle timeframe for strategy signals (e.g., '1m', '5m', '1h', '1d')"
+  },
+
+  "execution": {
+    "order_type": "market",
+    "_comment_order_type": "Default order type: 'market' (immediate) or 'limit' (wait for price)",
+
+    "max_consecutive_failures": 3,
+    "_comment_max_consecutive_failures": "Halt trading after this many consecutive order failures"
+  },
+
+  "safety": {
+    "require_live_confirmation": true,
+    "_comment_require_live_confirmation": "Require manual confirmation before entering live mode",
+
+    "log_all_decisions": true,
+    "_comment_log_all_decisions": "Log all trading decisions including rejected trades",
+
+    "kill_switch_env_var": "CRYPTOBOT_KILL_SWITCH",
+    "_comment_kill_switch_env_var": "Environment variable name for emergency stop. Set to '1' to halt all trading"
+  },
+
+  "_safety_checklist": [
+    "✓ Risk per trade set to conservative 1%",
+    "✓ Maximum exposure limited to 15% of account",
+    "✓ Stop-loss required on all trades (1.5 ATR minimum)",
+    "✓ Daily loss limit set to 2%",
+    "✓ Live trading disabled by default (paper mode)",
+    "✓ Trailing stops enabled to protect profits",
+    "✓ Minimum position size enforces quality over quantity",
+    "⚠ Always test in paper mode before enabling live trading",
+    "⚠ Never commit API keys or secrets to version control",
+    "⚠ Review all parameters before deploying to production"
+  ]
+}
