@@ -263,7 +263,7 @@ Passed: 4/4 checks
    
 2. Flatten `strategies/ml_based/` directory
    - Move `ml_strategy.py` up one level
-   - Update imports: `from strategies.ml_based` → `from strategies.ml_strategy`
+   - Update imports: `from strategies.ml_based` → `from strategies.ml_strategy` ✅ DONE (Module 21 Section 5.2)
 
 **Rationale for Deferral:**
 - Purely cosmetic changes

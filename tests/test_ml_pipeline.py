@@ -289,7 +289,7 @@ class TestMLStrategyIntegration(unittest.TestCase):
         """Test that MLStrategy returns valid signal format."""
         # This test requires a trained model, so we'll skip if not available
         try:
-            from strategies.ml_based import MLStrategy
+            from strategies.ml_strategy import MLStrategy
             
             # Try to create strategy (will fail if no model exists)
             # This is more of an integration test
