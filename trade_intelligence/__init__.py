@@ -25,7 +25,10 @@ Usage:
     print(signal.to_dict())
 """
 
-from .signal_model import TradeSignal, SignalDirection, SignalConfidence
+from .signal_model import (
+    TradeSignal, SignalDirection, SignalConfidence,
+    RegimeType, RiskFlags
+)
 from .signal_engine import SignalEngine
 from .confidence import ConfidenceCalculator
 from .risk_context import RiskContextAnalyzer
@@ -34,6 +37,8 @@ __all__ = [
     'TradeSignal',
     'SignalDirection',
     'SignalConfidence',
+    'RegimeType',
+    'RiskFlags',
     'SignalEngine',
     'ConfidenceCalculator',
     'RiskContextAnalyzer',
