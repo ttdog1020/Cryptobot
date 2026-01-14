@@ -39,7 +39,7 @@ heartbeat: 30             # Heartbeat ping interval (seconds)
 strategy:
   type: scalping_ema_rsi  # Strategy name
   
-  # Strategy-specific parameters (optional - uses defaults from config/strategies/scalping.yaml)
+  # Strategy-specific parameters (optional - uses strategy defaults if not specified)
   params:
     # Uncomment to override default strategy parameters:
     # ema_fast: 5
