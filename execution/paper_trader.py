@@ -5,6 +5,7 @@ Fully offline, safe paper trading engine for virtual order execution.
 Tracks positions, balance, and PnL without any real exchange interaction.
 
 Module 19: Added session-based logging with timestamped log files.
+Module 28: Integrated realistic fee/slippage modeling.
 """
 
 import logging
@@ -13,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 import uuid
 import pandas as pd
+import yaml
 
 from .order_types import (
     OrderRequest,
@@ -23,6 +25,7 @@ from .order_types import (
     Position,
     ExecutionResult
 )
+from .fee_schedule import RealisticExecutionModel
 
 logger = logging.getLogger(__name__)
 
@@ -47,25 +50,56 @@ class PaperTrader:
         commission_rate: float = 0.001,  # 0.1% commission
         allow_shorting: bool = True,
         log_trades: bool = True,
-        log_file: Optional[Union[str, Path]] = None
+        log_file: Optional[Union[str, Path]] = None,
+        use_realistic_execution: bool = False,
+        execution_model: Optional[RealisticExecutionModel] = None,
+        fees_config_path: Optional[Union[str, Path]] = None
     ):
         """
         Initialize paper trader.
         
         Args:
             starting_balance: Initial virtual balance (USD)
-            slippage: Slippage as fraction (0.0005 = 0.05%)
-            commission_rate: Commission as fraction (0.001 = 0.1%)
+            slippage: Slippage as fraction (0.0005 = 0.05%) - ignored if use_realistic_execution=True
+            commission_rate: Commission as fraction (0.001 = 0.1%) - ignored if use_realistic_execution=True
             allow_shorting: Whether to allow short positions
             log_trades: Whether to log trades to file
             log_file: Path to trade log file (None = auto-generate timestamped path)
+            use_realistic_execution: Use realistic fee/slippage model (default: False for backward compat)
+            execution_model: Custom execution model (overrides fees_config_path)
+            fees_config_path: Path to fees.yaml config (default: config/fees.yaml)
         """
         self.starting_balance = starting_balance
         self.balance = starting_balance
-        self.slippage = slippage
-        self.commission_rate = commission_rate
         self.allow_shorting = allow_shorting
         self.log_trades = log_trades
+        
+        # Execution cost modeling
+        self.use_realistic_execution = use_realistic_execution
+        
+        if self.use_realistic_execution:
+            if execution_model:
+                self.execution_model = execution_model
+            else:
+                # Load from config
+                config_path = Path(fees_config_path) if fees_config_path else Path("config/fees.yaml")
+                if config_path.exists():
+                    self.execution_model = self._load_execution_model_from_config(config_path)
+                    logger.info(f"[FEES] Loaded realistic execution model from {config_path}")
+                else:
+                    logger.warning(f"[FEES] Config not found at {config_path}, using defaults")
+                    self.execution_model = RealisticExecutionModel()
+            
+            # Store fallback values (not used in realistic mode)
+            self.slippage = slippage
+            self.commission_rate = commission_rate
+            logger.info("[FEES] Realistic execution model enabled")
+        else:
+            # Legacy flat commission/slippage
+            self.slippage = slippage
+            self.commission_rate = commission_rate
+            self.execution_model = None
+            logger.info(f"[FEES] Flat model: Slippage={slippage*100:.2f}%, Commission={commission_rate*100:.2f}%")
         
         # Positions: {symbol: Position}
         self.positions: Dict[str, Position] = {}
@@ -102,8 +136,54 @@ class PaperTrader:
         self.enable_trailing_stop = False
         self.trailing_stop_pct = 0.02  # Default 2%
         
-        logger.info(f"PaperTrader initialized: Balance=${starting_balance:.2f}, "
-                   f"Slippage={slippage*100:.2f}%, Commission={commission_rate*100:.2f}%")
+        logger.info(f"PaperTrader initialized: Balance=${starting_balance:.2f}")
+    
+    def _load_execution_model_from_config(self, config_path: Path) -> RealisticExecutionModel:
+        """Load execution model from fees.yaml config."""
+        from .fee_schedule import (
+            FeeSchedule, BinanceTier, DynamicSlippageModel, 
+            SpreadModel, RealisticExecutionModel
+        )
+        
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Load fee schedule
+        fee_config = config.get('fee_schedule', {})
+        tier_name = fee_config.get('tier', 'REGULAR')
+        tier = BinanceTier[tier_name]
+        use_bnb = fee_config.get('use_bnb_discount', False)
+        
+        fee_schedule = FeeSchedule(
+            exchange=fee_config.get('exchange', 'binance'),
+            tier=tier,
+            use_bnb_discount=use_bnb
+        )
+        
+        # Load slippage model
+        slip_config = config.get('slippage_model', {})
+        slippage_model = DynamicSlippageModel(
+            base_slippage=slip_config.get('base_slippage', 0.0005),
+            max_slippage=slip_config.get('max_slippage', 0.01),
+            volume_impact_factor=slip_config.get('volume_impact_factor', 0.1),
+            volatility_multiplier=slip_config.get('volatility_multiplier', 2.0)
+        )
+        
+        # Load spread model
+        spread_config = config.get('spread_model', {})
+        spread_model = SpreadModel(
+            base_spread_bps=spread_config.get('base_spread_bps', 5.0),
+            min_spread_bps=spread_config.get('min_spread_bps', 1.0),
+            max_spread_bps=spread_config.get('max_spread_bps', 50.0),
+            volatility_multiplier=spread_config.get('volatility_multiplier', 10.0)
+        )
+        
+        # Create integrated model
+        return RealisticExecutionModel(
+            fee_schedule=fee_schedule,
+            slippage_model=slippage_model,
+            spread_model=spread_model
+        )
     
     def set_risk_config(self, risk_config: Dict[str, Any]):
         """
@@ -265,19 +345,39 @@ class PaperTrader:
     
     def _execute_order(self, order: OrderRequest, current_price: float) -> OrderFill:
         """Execute order and create fill."""
-        # Calculate fill price with slippage
-        if order.side in [OrderSide.LONG, OrderSide.BUY]:
-            # Buying - pay more
-            slippage_amount = current_price * self.slippage
-            fill_price = current_price + slippage_amount
-        else:
-            # Selling/Shorting - receive less
-            slippage_amount = current_price * self.slippage
-            fill_price = current_price - slippage_amount
         
-        # Calculate commission
-        fill_value = fill_price * order.quantity
-        commission = fill_value * self.commission_rate
+        if self.use_realistic_execution:
+            # Use realistic execution model
+            order_value = current_price * order.quantity
+            
+            costs = self.execution_model.calculate_execution_costs(
+                order_value=order_value,
+                price=current_price,
+                is_buy=order.side in [OrderSide.LONG, OrderSide.BUY],
+                is_maker=False,  # Assume taker for now (could be enhanced)
+                market_volume_24h=None,  # Optional enhancement
+                volatility=None  # Optional enhancement
+            )
+            
+            fill_price = costs['effective_price']
+            commission = costs['commission']
+            slippage_cost = costs['slippage_cost'] + costs['spread_cost']
+            
+        else:
+            # Legacy flat commission/slippage
+            if order.side in [OrderSide.LONG, OrderSide.BUY]:
+                # Buying - pay more
+                slippage_amount = current_price * self.slippage
+                fill_price = current_price + slippage_amount
+            else:
+                # Selling/Shorting - receive less
+                slippage_amount = current_price * self.slippage
+                fill_price = current_price - slippage_amount
+            
+            # Calculate commission
+            fill_value = fill_price * order.quantity
+            commission = fill_value * self.commission_rate
+            slippage_cost = slippage_amount * order.quantity
         
         # Create fill
         fill = OrderFill(
@@ -287,13 +387,14 @@ class PaperTrader:
             quantity=order.quantity,
             fill_price=fill_price,
             commission=commission,
-            slippage=slippage_amount * order.quantity,
+            slippage=slippage_cost,
             execution_venue="PAPER",
             metadata={
                 'strategy': order.strategy_name,
                 'confidence': order.signal_confidence,
                 'stop_loss': order.stop_loss,
-                'take_profit': order.take_profit
+                'take_profit': order.take_profit,
+                'realistic_model': self.use_realistic_execution
             }
         )
         
