@@ -197,7 +197,7 @@ print(f"Test Accuracy: {result['metrics']['accuracy']:.4f}")
 
 ### 2. Use in Backtesting
 ```python
-from strategies.ml_based import MLStrategy
+from strategies.ml_strategy import MLStrategy
 from risk_management import RiskEngine, RiskConfig
 
 # Load strategy
