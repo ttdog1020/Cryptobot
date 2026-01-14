@@ -219,6 +219,18 @@ class NightlyPaperSession:
         pnl = self.trader.balance - self.starting_balance
         pnl_pct = (pnl / self.starting_balance) * 100 if self.starting_balance > 0 else 0
         
+        # Determine pass/fail status
+        status = "PASS" if self.errors_count == 0 else "WARN"
+        status_details = []
+        
+        # Validation checks
+        if self.errors_count > 0:
+            status_details.append(f"Errors: {self.errors_count}")
+        if self.trades_count == 0:
+            status_details.append("No trades executed (may be normal)")
+        if pnl_pct < -10.0:
+            status_details.append(f"Large drawdown: {pnl_pct:.2f}%")
+        
         return {
             "timestamp": datetime.now().isoformat(),
             "duration_minutes": self.duration_minutes,
@@ -229,7 +241,10 @@ class NightlyPaperSession:
             "signals": self.signals_count,
             "trades": self.trades_count,
             "errors": self.errors_count,
-            "deterministic": self.deterministic
+            "deterministic": self.deterministic,
+            "status": status,
+            "status_details": status_details,
+            "win_rate": (self.trades_count / max(1, self.signals_count)) * 100 if self.signals_count > 0 else 0.0
         }
     
     def _save_metrics(self):

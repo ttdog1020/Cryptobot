@@ -1,70 +1,151 @@
 """
 Generate markdown summary for GitHub Actions job summary.
 
+Reads metrics.json from nightly artifacts and produces a formatted
+markdown summary with status badge, key metrics, and links to artifacts.
+
 Usage:
     python scripts/generate_summary.py artifacts/nightly >> $GITHUB_STEP_SUMMARY
+    python scripts/generate_summary.py artifacts/nightly --output summary.md
 """
 
 import json
 import sys
 from pathlib import Path
+from typing import Optional
+
 
 def generate_summary(nightly_dir: str) -> str:
-    """Generate markdown summary from nightly run artifacts."""
+    """
+    Generate markdown summary from nightly run artifacts.
+    
+    Args:
+        nightly_dir: Path to artifacts directory containing metrics.json
+        
+    Returns:
+        Formatted markdown string suitable for GitHub Actions job summary
+    """
     
     nightly_path = Path(nightly_dir)
     metrics_file = nightly_path / "metrics.json"
     
     if not metrics_file.exists():
-        return "⚠️ No metrics found in nightly run"
+        return "⚠️ **Status:** No metrics found in nightly run - check job logs for errors"
     
-    with open(metrics_file) as f:
-        metrics = json.load(f)
+    try:
+        with open(metrics_file) as f:
+            metrics = json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        return f"⚠️ **Status:** Failed to read metrics: {e}"
+    
+    # Status badge
+    status = metrics.get("status", "UNKNOWN")
+    if status == "PASS":
+        status_badge = "✅ PASS"
+        emoji = "✅"
+    else:
+        status_badge = "⚠️ WARN"
+        emoji = "⚠️"
     
     # Build markdown summary
     lines = [
-        "# 📊 Nightly Paper Trading Report",
+        f"## {emoji} Nightly Paper Trading Report",
         "",
-        f"**Run Time:** {metrics['timestamp']}",
-        f"**Duration:** {metrics['duration_minutes']} minutes (simulated)",
-        "",
-        "## Performance Metrics",
-        "",
-        "| Metric | Value |",
-        "|--------|-------|",
-        f"| Starting Balance | ${metrics['starting_balance']:.2f} |",
-        f"| Final Balance | ${metrics['final_balance']:.2f} |",
-        f"| PnL | ${metrics['pnl']:.2f} |",
-        f"| Return | {metrics['pnl_pct']:.2f}% |",
-        "",
-        "## Trading Activity",
-        "",
-        "| Item | Count |",
-        "|------|-------|",
-        f"| Signals Generated | {metrics['signals']} |",
-        f"| Trades Executed | {metrics['trades']} |",
-        f"| Errors | {metrics['errors']} |",
-        "",
-        "## System Info",
-        "",
-        f"- **Mode:** Deterministic Paper Trading" if metrics['deterministic'] else "- **Mode:** Live Paper Trading",
-        f"- **Artifacts Location:** `artifacts/nightly/`",
+        f"**Status:** {status_badge}",
+        f"**Run Time:** {metrics.get('timestamp', 'N/A')}",
+        f"**Duration:** {metrics.get('duration_minutes', 'N/A')} minutes (simulated)",
+        f"**Mode:** {'Deterministic' if metrics.get('deterministic') else 'Stochastic'}",
         "",
     ]
     
-    # Add status indicator
-    if metrics['errors'] == 0 and metrics['trades'] >= 0:
-        lines.append("✅ **Status:** All checks passed")
-    else:
-        lines.append(f"⚠️ **Status:** {metrics['errors']} error(s) detected")
+    # Performance Metrics
+    lines.extend([
+        "### 📊 Performance Metrics",
+        "",
+        "| Metric | Value |",
+        "|--------|-------|",
+        f"| Starting Balance | ${metrics.get('starting_balance', 0):.2f} |",
+        f"| Final Balance | ${metrics.get('final_balance', 0):.2f} |",
+        f"| PnL | ${metrics.get('pnl', 0):.2f} |",
+        f"| Return % | {metrics.get('pnl_pct', 0):.2f}% |",
+        "",
+    ])
+    
+    # Trading Activity
+    lines.extend([
+        "### 📈 Trading Activity",
+        "",
+        "| Item | Count |",
+        "|------|-------|",
+        f"| Signals Generated | {metrics.get('signals', 0)} |",
+        f"| Trades Executed | {metrics.get('trades', 0)} |",
+        f"| Win Rate | {metrics.get('win_rate', 0):.1f}% |",
+        f"| Errors | {metrics.get('errors', 0)} |",
+        "",
+    ])
+    
+    # Status Details
+    status_details = metrics.get("status_details", [])
+    if status_details:
+        lines.extend([
+            "### ⚠️ Status Details",
+            "",
+        ])
+        for detail in status_details:
+            lines.append(f"- {detail}")
+        lines.append("")
+    
+    # System Info
+    lines.extend([
+        "### 🔧 System Info",
+        "",
+        f"- **Artifact Location:** `artifacts/nightly/`",
+        f"- **Logs:** Check job logs for detailed execution trace",
+        "",
+    ])
+    
+    # Artifacts note
+    lines.extend([
+        "### 📦 Artifacts",
+        "",
+        "The following artifacts are available for download:",
+        "- `metrics.json` - This metrics summary",
+        "- `nightly_paper.log` - Detailed execution log",
+        "- `trades.csv` - Trade log (if trades executed)",
+        "",
+    ])
     
     return "\n".join(lines)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/generate_summary.py <nightly_dir>")
-        sys.exit(1)
+def main():
+    """Main entry point."""
+    import argparse
     
-    summary = generate_summary(sys.argv[1])
-    print(summary)
+    parser = argparse.ArgumentParser(
+        description="Generate GitHub Actions job summary from nightly metrics"
+    )
+    parser.add_argument(
+        "nightly_dir",
+        help="Path to nightly artifacts directory"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="Optional: write to file instead of stdout"
+    )
+    
+    args = parser.parse_args()
+    
+    summary = generate_summary(args.nightly_dir)
+    
+    if args.output:
+        with open(args.output, 'w') as f:
+            f.write(summary)
+        print(f"Summary written to {args.output}")
+    else:
+        print(summary)
+
+
+if __name__ == "__main__":
+    main()

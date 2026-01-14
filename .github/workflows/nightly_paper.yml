@@ -27,19 +27,23 @@ jobs:
           TRADING_MODE: paper
           LIVE_TRADING_ENABLED: "false"
         run: |
-          mkdir -p artifacts
-          # Update this command to whatever your repo supports:
-          python analytics/paper_report.py --output artifacts/paper_report.txt || true
-          echo "Paper run completed" > artifacts/status.txt
+          mkdir -p artifacts/nightly
+          python scripts/run_nightly_paper.py \
+            --output-dir artifacts/nightly \
+            --duration-minutes 15 \
+            --deterministic \
+            --starting-balance 10000.0 \
+            || true
+
+      - name: Generate job summary
+        if: always()
+        run: |
+          python scripts/generate_summary.py artifacts/nightly >> $GITHUB_STEP_SUMMARY
 
       - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nightly-paper
-          path: artifacts/
-        retention-days: 7
-    
-    - name: Publish results to job summary
-      if: always()
-      run: |
-        python scripts/generate_summary.py artifacts/nightly >> $GITHUB_STEP_SUMMARY
+          path: artifacts/nightly/
+          retention-days: 7
