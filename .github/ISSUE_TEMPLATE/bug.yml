@@ -1,0 +1,277 @@
+name: 🐛 Bug Report
+description: Report a bug or issue for autonomous resolution
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report Template
+        
+        This template helps autonomous agents understand, reproduce, and fix bugs systematically.
+        
+        **Required fields ensure:**
+        - Clear reproduction steps
+        - Expected vs actual behavior
+        - Files/modules affected
+        - Test commands to verify fix
+  
+  - type: input
+    id: summary
+    attributes:
+      label: Bug Summary
+      description: One-sentence description of the issue
+      placeholder: "Walk-forward runner crashes when test window has fewer than 30 candles"
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Detailed Description
+      description: Full explanation of the bug and its impact
+      placeholder: |
+        When running walk-forward validation with small test windows (< 30 candles), the runner crashes with:
+        
+        ```
+        IndexError: list index out of range
+        File: backtests/walk_forward.py, line 123
+        ```
+        
+        This prevents optimizer evolution from completing and blocks nightly runs.
+    validations:
+      required: true
+  
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Exact commands and steps to trigger the bug
+      placeholder: |
+        1. Run: `python -m backtests.walk_forward --config config/smoke_test.yaml --test-window 20`
+        2. Observe: Crash after completing first train window
+        3. Check logs: `logs/walk_forward_<date>.log` shows IndexError
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead
+      placeholder: |
+        - Walk-forward runner should handle small test windows gracefully
+        - If window too small, skip with warning: "Test window insufficient (need 30+ candles, got 20)"
+        - Continue to next window instead of crashing
+    validations:
+      required: true
+  
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happens
+      placeholder: |
+        - Crash with IndexError on line 123
+        - No graceful handling of edge case
+        - Entire run aborted, no results generated
+    validations:
+      required: true
+  
+  - type: textarea
+    id: error_logs
+    attributes:
+      label: Error Messages / Logs
+      description: Full error traceback or relevant log entries
+      placeholder: |
+        ```
+        Traceback (most recent call last):
+          File "backtests/walk_forward.py", line 123, in compute_metrics
+            value = df.iloc[-30]
+        IndexError: single positional indexer is out-of-bounds
+        ```
+      render: shell
+  
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Impact of this bug
+      options:
+        - "Critical (blocks nightly runs or CI)"
+        - "High (breaks major feature)"
+        - "Medium (workaround available)"
+        - "Low (cosmetic or minor)"
+      default: 1
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: risk_impact
+    attributes:
+      label: Risk Impact
+      description: Safety risk if bug remains unfixed
+      options:
+        - "Low (reporting/logging issue only)"
+        - "Medium (strategy or optimizer affected)"
+        - "High (risk management or execution affected)"
+        - "Critical (live trading safety compromised)"
+      default: 0
+    validations:
+      required: true
+  
+  - type: textarea
+    id: files_affected
+    attributes:
+      label: Files/Modules Affected
+      description: List files that likely contain the bug
+      placeholder: |
+        **Primary:**
+        - backtests/walk_forward.py (line 123, compute_metrics function)
+        
+        **Related:**
+        - analytics/paper_report.py (similar pattern may exist)
+        - tests/test_walk_forward.py (add edge case test)
+      value: |
+        **Primary:**
+        - 
+        
+        **Related:**
+        - 
+    validations:
+      required: true
+  
+  - type: textarea
+    id: validation_commands
+    attributes:
+      label: Tests & Validation Commands
+      description: Commands to verify the bug is fixed
+      placeholder: |
+        # Reproduce bug (should fail before fix)
+        python -m backtests.walk_forward --config config/smoke_test.yaml --test-window 20
+        
+        # Unit test (add regression test)
+        pytest tests/test_walk_forward.py::test_small_window_handling -v
+        
+        # Verify fix (should pass after fix)
+        python -m backtests.walk_forward --config config/smoke_test.yaml --test-window 20
+        
+        # Full suite
+        pytest
+        python -m validation.safety_suite
+      value: |
+        # Reproduce bug
+        
+        
+        # Unit tests
+        pytest tests/test_<module>.py -v
+        
+        # Full suite
+        pytest
+        python -m validation.safety_suite
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: module_category
+    attributes:
+      label: Module Category
+      description: Primary module affected by this bug
+      options:
+        - "strategy (signal generation)"
+        - "execution (order placement)"
+        - "risk (position sizing, vetoes)"
+        - "data (feed, cache, synthetic)"
+        - "ml (models, features, training)"
+        - "optimizer (param search, evolution)"
+        - "backtest (historical validation)"
+        - "analytics (reporting, metrics)"
+        - "validation (safety, invariants)"
+        - "ops (CI, scripts, workflows)"
+      default: 0
+    validations:
+      required: true
+  
+  - type: textarea
+    id: proposed_fix
+    attributes:
+      label: Proposed Fix (Optional)
+      description: If you have an idea for the solution
+      placeholder: |
+        Add validation before accessing df.iloc[-30]:
+        
+        ```python
+        if len(df) < 30:
+            logger.warning(f"Window too small: {len(df)} candles (need 30+)")
+            return None  # Skip this window
+        
+        # Safe to access now
+        value = df.iloc[-30]
+        ```
+  
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (If Available)
+      description: Temporary solution until fix is deployed
+      placeholder: |
+        Avoid using --test-window < 30 when running walk-forward:
+        
+        ```bash
+        python -m backtests.walk_forward --config config/smoke_test.yaml --test-window 60
+        ```
+  
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: System and version information
+      placeholder: |
+        - OS: Windows 10
+        - Python: 3.11.5
+        - Commit: 7ef6398
+        - Branch: staging
+      value: |
+        - OS: 
+        - Python: 
+        - Commit: 
+        - Branch: 
+  
+  - type: checkboxes
+    id: regression_test
+    attributes:
+      label: Regression Test Required
+      description: Should a test be added to prevent this bug from recurring?
+      options:
+        - label: "Add unit test to catch this edge case"
+          required: false
+        - label: "Add integration test if needed"
+          required: false
+        - label: "Update existing test to cover this scenario"
+          required: false
+  
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information (related issues, screenshots, etc.)
+      placeholder: |
+        Related to walk-forward validation implementation (Phase 1 milestone).
+        
+        Similar issue may exist in analytics/paper_report.py where we access df.iloc without bounds checking.
+  
+  - type: checkboxes
+    id: agent_ready
+    attributes:
+      label: Agent-Ready Status
+      description: Is this issue ready for autonomous agent pickup?
+      options:
+        - label: "Reproduction steps are clear and complete"
+        - label: "Files/modules affected are identified"
+        - label: "Expected behavior is unambiguous"
+        - label: "Validation commands provided"
+        - label: "No missing context or dependencies"

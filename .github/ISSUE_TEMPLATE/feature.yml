@@ -1,0 +1,208 @@
+name: 🚀 Feature Request
+description: Propose a new feature or enhancement for autonomous development
+title: "[Feature]: "
+labels: ["feature", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request Template
+        
+        This template helps autonomous agents understand the full scope and requirements for implementing new features.
+        
+        **Required fields ensure:**
+        - Clear objectives and acceptance criteria
+        - Testability and validation commands
+        - Risk assessment for safety gates
+        - File/module context for implementation
+  
+  - type: input
+    id: objective
+    attributes:
+      label: Objective
+      description: One-sentence summary of what this feature should accomplish
+      placeholder: "Add walk-forward validation to prevent overfitting in strategy evolution"
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Detailed Description
+      description: Explain the feature, its purpose, and expected behavior
+      placeholder: |
+        Implement a walk-forward evaluation framework that:
+        - Splits historical data into rolling train/test windows
+        - Trains optimizer on train windows only
+        - Validates parameters on out-of-sample test windows
+        - Computes overfit risk score based on train→test degradation
+        - Integrates with evolution_engine.py for auto-apply decisions
+    validations:
+      required: true
+  
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Specific, testable conditions that must be met (checklist format)
+      placeholder: |
+        - [ ] backtests/walk_forward.py exists and implements rolling window logic
+        - [ ] Overfit risk score computed (parameter stability + degradation)
+        - [ ] Integration with optimizer/evolution_engine.py complete
+        - [ ] Unit tests pass using synthetic_data (deterministic)
+        - [ ] Smoke test runs successfully: python -m backtests.walk_forward --config config/smoke_test.yaml
+        - [ ] artifacts/walk_forward/<date>/summary.json generated
+        - [ ] Documentation updated in MODULE_*_COMPLETE.md
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  
+  - type: textarea
+    id: validation_commands
+    attributes:
+      label: Tests & Validation Commands
+      description: Exact commands to run for testing this feature
+      placeholder: |
+        # Unit tests
+        pytest tests/test_walk_forward.py -v
+        
+        # Integration test
+        python -m backtests.walk_forward --config config/smoke_test.yaml --windows 3
+        
+        # Verify output
+        python -c "import json; print(json.load(open('artifacts/walk_forward/latest/summary.json')))"
+        
+        # Run full test suite
+        pytest
+        python -m validation.safety_suite
+      value: |
+        # Unit tests
+        pytest tests/test_<module>.py -v
+        
+        # Integration tests
+        
+        
+        # Full suite
+        pytest
+        python -m validation.safety_suite
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: risk_impact
+    attributes:
+      label: Risk Impact
+      description: Safety risk level of this change
+      options:
+        - "Low (new feature, no changes to safety/risk/execution)"
+        - "Medium (modifies strategy logic or optimizer)"
+        - "High (changes risk management, execution, or safety gates)"
+      default: 0
+    validations:
+      required: true
+  
+  - type: textarea
+    id: files_modules
+    attributes:
+      label: Files/Modules to Touch
+      description: List files that will be created or modified
+      placeholder: |
+        **New files:**
+        - backtests/walk_forward.py (main implementation)
+        - tests/test_walk_forward.py (unit tests)
+        
+        **Modified files:**
+        - optimizer/evolution_engine.py (add walk-forward integration)
+        - .gitignore (ignore artifacts/walk_forward/)
+        
+        **Documentation:**
+        - MODULE_34_COMPLETE.md (create for walk-forward module)
+        - docs/AUTONOMOUS_ROADMAP.md (update milestone status)
+      value: |
+        **New files:**
+        - 
+        
+        **Modified files:**
+        - 
+        
+        **Documentation:**
+        - 
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: module_category
+    attributes:
+      label: Module Category
+      description: Primary module this feature belongs to
+      options:
+        - "strategy (signal generation)"
+        - "execution (order placement)"
+        - "risk (position sizing, vetoes)"
+        - "data (feed, cache, synthetic)"
+        - "ml (models, features, training)"
+        - "optimizer (param search, evolution)"
+        - "backtest (historical validation)"
+        - "analytics (reporting, metrics)"
+        - "validation (safety, invariants)"
+        - "ops (CI, scripts, workflows)"
+      default: 0
+    validations:
+      required: true
+  
+  - type: checkboxes
+    id: safety_checklist
+    attributes:
+      label: Safety Pre-Flight Checklist
+      description: Confirm safety requirements (agent must verify)
+      options:
+        - label: Strategies only return TradeIntent (no direct order placement)
+          required: false
+        - label: Risk engine can veto but not place orders
+          required: false
+        - label: No secrets or API keys hardcoded
+          required: false
+        - label: Changes do not enable live trading by default
+          required: false
+        - label: All tests pass before PR submission
+          required: false
+  
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information (links, references, screenshots)
+      placeholder: |
+        Related to AUTONOMOUS_ROADMAP.md Phase 1: Overfitting Prevention milestone.
+        
+        References:
+        - docs/METRICS_SCORECARD.md (defines overfit metrics)
+        - optimizer/evolution_engine.py (integration point)
+        - validation/synthetic_data.py (for deterministic tests)
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Urgency for implementation
+      options:
+        - "P0 - Critical (blocks other work)"
+        - "P1 - High (end-state milestone)"
+        - "P2 - Medium (nice-to-have)"
+        - "P3 - Low (future enhancement)"
+      default: 1
+    validations:
+      required: true
+  
+  - type: checkboxes
+    id: agent_ready
+    attributes:
+      label: Agent-Ready Status
+      description: Is this issue ready for autonomous agent pickup?
+      options:
+        - label: "All required fields completed"
+        - label: "Acceptance criteria are specific and testable"
+        - label: "Files/modules clearly identified"
+        - label: "Test commands provided"
+        - label: "No ambiguity or missing context"
