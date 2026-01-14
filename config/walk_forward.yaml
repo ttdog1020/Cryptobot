@@ -1,0 +1,93 @@
+# Walk-Forward Validation Configuration
+#
+# Controls window generation, validation, and overfitting detection for parameter optimization.
+#
+# Default strategy: ROLLING (no overlap between windows)
+# Can be overridden via CLI or environment variables
+
+# Window generation settings
+window_strategy: "rolling"              # rolling | anchored | fixed_gap
+train_window_days: 30                   # Days for training period
+test_window_days: 7                     # Days for test/validation period
+overlap_days: 0                         # Overlap between rolling windows (0 = no overlap)
+gap_days: 1                             # Gap between train and test (for fixed_gap strategy)
+
+# Overfitting detection thresholds
+overfitting:
+  # Acceptable degradation from train to test (in Sharpe ratio units)
+  tolerance: 0.30                       # Max acceptable train-test diff before penalty
+  penalty_scale: 1.0                    # Multiplier for penalty magnitude
+  
+  # Severity classification
+  severity_thresholds:
+    none: 0.1                           # No overfitting
+    low: 0.3                            # Low overfitting
+    moderate: 0.7                       # Moderate overfitting
+    high: 1.5                           # High overfitting
+    severe: 1.5                         # Severe overfitting (above this)
+
+# Parameter drift monitoring
+parameter_drift:
+  # Max acceptable change per generation (% of parameter value)
+  max_drift_pct: 10.0
+  
+  # Hard bounds for parameters (example; adjust for your parameters)
+  bounds:
+    ema_fast:
+      min: 5
+      max: 30
+    ema_slow:
+      min: 20
+      max: 100
+    rsi_period:
+      min: 10
+      max: 50
+    rsi_overbought:
+      min: 60
+      max: 90
+    rsi_oversold:
+      min: 10
+      max: 40
+
+# Stability requirements
+stability:
+  min_score: 0.5                        # Minimum stability score (0.0-1.0)
+  lookback_windows: 5                   # Windows to look back for stability calc
+  max_degradation_ratio: 0.5            # Max avg degradation from train to test
+
+# Validation settings
+validation:
+  min_windows: 3                        # Minimum windows required for valid analysis
+  require_positive_test_sharpe: false   # Require test Sharpe > 0
+  max_negative_sharpe: -2.0             # Flag if any test window below this
+  
+  # Rollback rules (integrated with auto_optimizer)
+  enable_rollback: true
+  max_generation_degradation: 0.05      # Max allowed fitness decrease (5%)
+  
+  # Veto rules: reject parameters if violated
+  veto_rules:
+    max_out_of_bounds_params: 1         # Reject if >1 param out of bounds
+    max_avg_penalty: 0.5                # Reject if avg penalty exceeds this
+    min_test_sharpe_any_window: -1.5    # Reject if any window below this
+
+# Output and reporting
+reporting:
+  generate_html: true                   # Generate HTML report
+  output_dir: "reports/walk_forward"    # Directory for reports
+  save_results_csv: true                # Save detailed results to CSV
+  
+# Integration with auto_optimizer
+optimizer_integration:
+  enabled: true
+  use_penalty_in_fitness: true          # Include overfitting penalty in fitness
+  penalty_weight: 0.1                   # Weight of overfitting penalty in fitness
+  
+  # Apply drift penalty to fitness
+  enable_drift_penalty: true
+  drift_weight: 0.05
+
+# Logging
+logging:
+  level: "INFO"                         # DEBUG | INFO | WARNING | ERROR
+  log_file: "logs/walk_forward.log"
