@@ -66,6 +66,11 @@ class MultiSessionAggregator:
                     logger.warning(f"[AGG] Skipping {file_path.name}: missing required columns")
                     continue
                 
+                # Skip sessions with insufficient data for analysis
+                if len(df) < 2:
+                    logger.info(f"[AGG] Skipping {file_path.name}: insufficient data ({len(df)} rows, need >=2)")
+                    continue
+                
                 # Parse timestamp
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 df = df.sort_values('timestamp').reset_index(drop=True)
@@ -93,7 +98,23 @@ class MultiSessionAggregator:
         """
         if not self.sessions:
             logger.warning("[AGG] No sessions loaded")
-            return {}
+            return {
+                'num_sessions': 0,
+                'session_names': [],
+                'start_time': None,
+                'end_time': None,
+                'duration_days': None,
+                'total_pnl': 0.0,
+                'total_starting_balance': 0.0,
+                'total_final_equity': 0.0,
+                'aggregate_return_pct': 0.0,
+                'combined_sharpe': 0.0,
+                'max_drawdown_pct': 0.0,
+                'var_95': 0.0,
+                'cvar_95': 0.0,
+                'per_session_stats': {},
+                'correlation_matrix': None
+            }
         
         # Compute returns if not present
         for session_name, df in self.sessions.items():

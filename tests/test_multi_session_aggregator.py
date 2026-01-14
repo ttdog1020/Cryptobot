@@ -285,7 +285,10 @@ class TestEdgeCases:
         agg = MultiSessionAggregator(Path("logs"))
         stats = agg.compute_metrics()
         
-        assert stats == {}
+        # Should return properly structured dict with zero values
+        assert stats['num_sessions'] == 0
+        assert stats['total_pnl'] == 0.0
+        assert stats['aggregate_return_pct'] == 0.0
     
     def test_single_row_session(self):
         """Test with session having only 1 row."""

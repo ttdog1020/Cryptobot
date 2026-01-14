@@ -1,0 +1,216 @@
+# PR5: Parameter Drift Monitoring & Constraints
+
+**Branch:** `feat/parameter-drift-limits` → `staging`  
+**Risk Level:** 🟡 MED  
+**Impact:** 🔴 HIGH  
+**Auto-Merge:** ✅ Yes (after testing)
+
+---
+
+## 📋 Summary
+
+Prevents optimizer from converging on unrealistic parameters by tracking drift and enforcing soft/hard bounds across optimization generations.
+
+**Before:** Optimizer can create parameters like EMA_FAST=45 (preferred 8-25) or RSI>100  
+**After:** Bounds enforced, drift penalized, health monitored
+
+---
+
+## 🏗️ Architecture
+
+### New Module
+
+#### `optimizer/drift_monitor.py` (~450 LOC)
+```python
+from optimizer.drift_monitor import DriftMonitor, ParameterBounds
+
+# Define bounds
+monitor = DriftMonitor()
+monitor.add_parameters_from_dict({
+    'ema_fast': {'min': 5, 'max': 50, 'soft_min': 8, 'soft_max': 25},
+    'rsi_threshold': {'min': 20, 'max': 80, 'soft_min': 30, 'soft_max': 70}
+})
+
+# Track each generation
+monitor.record_generation(params)
+
+# Check constraints
+violations = monitor.check_hard_bounds(params)      # Boolean check
+drift_penalty, details = monitor.compute_drift_penalties(params)
+soft_penalty, per_param = monitor.compute_soft_bound_penalties(params)
+
+# Monitor health
+health = monitor.check_health()  # Returns status + problem areas
+```
+
+**Key Classes:**
+1. **ParameterBounds** - Hard/soft constraints for single parameter
+2. **ParameterHistory** - Track values across generations
+3. **DriftMonitor** - Orchestrate all tracking and validation
+
+#### `tests/test_drift_monitor.py` (~400 LOC)
+20+ tests covering:
+- Bounds checking (hard/soft)
+- Drift penalty calculation
+- Health monitoring
+- History tracking
+- Edge cases
+
+---
+
+## 💡 Key Features
+
+### Hard Bounds (Veto)
+```python
+bounds = ParameterBounds('ema_fast', min=5, max=50)
+if not bounds.is_within_hard_bounds(60):
+    # Reject parameter immediately
+    fitness -= 999  # Veto in optimizer
+```
+
+### Soft Bounds (Penalty)
+```python
+bounds = ParameterBounds(
+    'ema_fast',
+    min=5, max=50,
+    soft_min=8, soft_max=25  # Preferred range
+)
+penalty = bounds.compute_soft_penalty(40)
+# Returns 0.5 (50% penalty) if outside soft range
+```
+
+### Drift Penalties
+```python
+monitor.compute_drift_penalties(params, max_drift_per_gen=0.1)
+# Returns penalty if change from previous gen > 10%
+```
+
+### Health Monitoring
+```python
+health = monitor.check_health()
+# Returns:
+# {
+#   'overall_status': 'HEALTHY|CONCERNING|NO_DATA',
+#   'parameters_exceeding_soft_bounds': [...],
+#   'parameters_with_high_drift': [...]
+# }
+```
+
+---
+
+## 📊 Usage Examples
+
+### 1. Integrate with auto_optimizer.py
+```python
+# In fitness function
+drift_penalty, _ = monitor.compute_drift_penalties(params)
+soft_penalty, _ = monitor.compute_soft_bound_penalties(params)
+
+fitness = base_fitness - drift_penalty - soft_penalty
+```
+
+### 2. Veto Bad Parameters
+```python
+violations = monitor.check_hard_bounds(params)
+if not all(violations.values()):
+    return -999  # Reject immediately
+```
+
+### 3. Monitor Evolution
+```python
+for gen in range(num_generations):
+    monitor.record_generation(best_params)
+    health = monitor.check_health()
+    
+    if health['overall_status'] == 'CONCERNING':
+        logger.warning("Parameters diverging from expected ranges")
+```
+
+---
+
+## ✅ Acceptance Criteria
+
+- [x] ParameterBounds class with hard/soft checks
+- [x] DriftMonitor tracks generations
+- [x] Drift penalties computed correctly
+- [x] Health monitoring detects issues
+- [x] JSON export for audit trail
+- [x] 20+ tests with >90% coverage
+- [x] All tests pass
+- [x] Edge cases handled
+
+---
+
+## 🚨 Risk Assessment
+
+**Risk Level:** 🟡 **MED**
+
+**Why MED:**
+- ✅ Pure validation, no trading logic changes
+- ✅ Can be disabled via config
+- ⚠️ Adds latency to fitness computation
+- ⚠️ Requires careful bound tuning
+
+**Mitigation:**
+- Bounds configurable per strategy
+- Health warnings before rejection
+- Gradual penalty ramp-up
+
+---
+
+## 📈 Impact
+
+**Impact:** 🔴 **HIGH**
+
+Prevents unrealistic parameter convergence (critical safety issue in autonomous evolution)
+
+---
+
+## 🧪 Testing
+
+```bash
+pytest tests/test_drift_monitor.py -v
+# 20+ tests, all passing
+```
+
+---
+
+## 🔄 Integration Points
+
+### auto_optimizer.py
+```python
+from optimizer.drift_monitor import DriftMonitor
+
+monitor = DriftMonitor()
+monitor.add_parameters_from_dict(config['parameter_bounds'])
+
+# In fitness loop
+monitor.record_generation(best_params)
+drift_pen, _ = monitor.compute_drift_penalties(best_params)
+fitness -= drift_pen
+```
+
+### config/evolution.json
+```json
+{
+  "parameter_bounds": {
+    "ema_fast": {"min": 5, "max": 50, "soft_min": 8, "soft_max": 25},
+    "ema_slow": {"min": 20, "max": 200, "soft_min": 30, "soft_max": 100}
+  },
+  "max_drift_per_generation": 0.1
+}
+```
+
+---
+
+## 🏷️ Labels
+
+- `enhancement`
+- `optimizer`
+- `safety`
+- `risk:med`
+- `impact:high`
+
+---
+
+**🤖 Generated by autonomous agent | January 13, 2026**
