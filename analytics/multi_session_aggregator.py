@@ -22,6 +22,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Minimum rows required for a session to be considered valid
+# Sessions with fewer rows are skipped during load_sessions()
+MIN_SESSION_ROWS = 2
+
 
 class MultiSessionAggregator:
     """Aggregate metrics across multiple trading sessions."""
@@ -67,8 +71,8 @@ class MultiSessionAggregator:
                     continue
                 
                 # Skip sessions with insufficient data for analysis
-                if len(df) < 2:
-                    logger.info(f"[AGG] Skipping {file_path.name}: insufficient data ({len(df)} rows, need >=2)")
+                if len(df) < MIN_SESSION_ROWS:
+                    logger.info(f"[AGG] Skipping {file_path.name}: insufficient data ({len(df)} rows, need >={MIN_SESSION_ROWS})")
                     continue
                 
                 # Parse timestamp
@@ -144,7 +148,7 @@ class MultiSessionAggregator:
         all_returns = []
         
         for session_name, df in self.sessions.items():
-            if len(df) < 2:
+            if len(df) < MIN_SESSION_ROWS:
                 continue
             
             starting_balance = df.iloc[0]['equity']
