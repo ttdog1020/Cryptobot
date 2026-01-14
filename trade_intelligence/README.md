@@ -12,7 +12,10 @@ Trade Intelligence provides a unified framework for aggregating signals from mul
 - **Regime context**: TRENDING / RANGING / BREAKOUT / NEUTRAL
 - **Risk flags**: Volatility spikes, liquidity issues, drawdown risk, conflicting signals
 - **Strategy agreement**: How many strategies agree, agreement ratio
-- **Rationale**: Human-readable explanation
+- **Timeframe confluence**: Alignment across multiple timeframes
+- **Freshness/decay**: Conviction adjusted for signal age
+- **Confidence buckets**: LOW / MEDIUM / HIGH driven by config thresholds
+- **Explanations**: Human-readable rationale with risks and decay context
 
 ## Key Features
 
@@ -32,7 +35,13 @@ Trade Intelligence provides a unified framework for aggregating signals from mul
 - **Drawdown risk**: Portfolio down > 10%
 - **Conflicting signals**: >30% strategy dissent
 
-### 4. JSON Export
+### 4. Signal Quality Enhancements
+- **Timeframe alignment**: Optional multi-timeframe agreement score
+- **Signal freshness**: Age tracking + exponential half-life decay
+- **Confidence buckets**: Configurable thresholds for LOW / MEDIUM / HIGH
+- **Explanations**: Rationale string combines consensus, regime, risk, decay
+
+### 5. JSON Export
 All signals are JSON-serializable for CI integration, dashboards, Discord alerts, etc.
 
 ## Architecture
@@ -62,13 +71,25 @@ signal = engine.generate_signal(
     strategy_outputs={'ema_rsi': {'signal': 'LONG', 'metadata': {...}}},
     symbol='BTCUSDT',
     timeframe='1h',
+    timeframe_signals={'15m': 'LONG', '4h': 'LONG'},
+    signal_timestamp='2025-01-01T00:00:00+00:00',
 )
 
 print(signal)
 # TradeSignal(BTCUSDT 1h @ ...): LONG conviction=0.60 (HIGH) regime=NEUTRAL agreement=100.0%
 
 print(signal.to_dict())
-# {'direction': 'LONG', 'conviction': 0.600, 'confidence_category': 'HIGH', ...}
+# {
+#   'direction': 'LONG',
+#   'conviction': 0.600,
+#   'confidence_category': 'HIGH',
+#   'confidence_bucket': 'HIGH',
+#   'timeframe_alignment_score': 1.0,
+#   'age_seconds': 0.0,
+#   'decayed_conviction': 0.600,
+#   'metadata': {'rationale': '...', 'explanation': '...'},
+#   ...
+# }
 ```
 
 ### Advanced: Multi-Strategy Consensus
@@ -89,10 +110,12 @@ signal = engine.generate_signal(
     timeframe='1h',
     regime='TRENDING',
     volatility_percentile=45,  # Mid-range volatility
+    timeframe_signals={'15m': 'LONG', '4h': 'SHORT'},
 )
 
 # 2/3 strategies agree
 # conviction = 0.6 * (2/3) + 0.2 * vol_norm(45) + 0.2 * hist
+# timeframe_alignment_score = 0.5 (LONG on 15m, SHORT on 4h)
 ```
 
 ### With Risk Context
@@ -156,6 +179,29 @@ config = {
 }
 
 engine = SignalEngine(confidence_config=config)
+
+```
+
+### Confidence Buckets & Decay
+
+```python
+engine = SignalEngine(
+    confidence_bucket_thresholds={'low': 0.35, 'high': 0.65},
+    decay_half_life_seconds=900,  # halve conviction every 15 minutes
+)
+
+signal = engine.generate_signal(
+    strategy_outputs={'ema_rsi': {'signal': 'LONG'}},
+    symbol='BTCUSDT',
+    timeframe='1h',
+    signal_timestamp='2025-01-01T00:00:00+00:00',
+)
+
+print(signal.confidence_bucket)
+# 'HIGH' or 'MEDIUM' based on thresholds
+
+print(signal.decayed_conviction)
+# Conviction adjusted by exponential decay using age_seconds
 ```
 
 ### Risk Detection

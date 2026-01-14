@@ -14,6 +14,7 @@ import pytest
 from pathlib import Path
 import json
 import tempfile
+from datetime import datetime, timezone, timedelta
 
 from trade_intelligence import (
     TradeSignal,
@@ -77,6 +78,9 @@ class TestTradeSignal:
             regime=RegimeType.TRENDING,
             strategy_names=['ema_rsi', 'macd'],
             tags=['confluence', 'breakout'],
+            decayed_conviction=0.5,
+            age_seconds=120,
+            timeframe_alignment_score=0.66,
         )
         
         signal_dict = signal.to_dict()
@@ -85,11 +89,36 @@ class TestTradeSignal:
         assert signal_dict['conviction'] == 0.75
         assert signal_dict['symbol'] == 'BTCUSDT'
         assert signal_dict['confidence_category'] == 'HIGH'
+        assert signal_dict['confidence_bucket'] == 'HIGH'
+        assert signal_dict['age_seconds'] == 120
+        assert signal_dict['decayed_conviction'] == 0.5
+        assert signal_dict['timeframe_alignment_score'] == pytest.approx(0.66, rel=0.01)
         
         # Ensure JSON serializable
         json_str = json.dumps(signal_dict)
         reloaded = json.loads(json_str)
         assert reloaded['direction'] == 'LONG'
+
+    def test_confidence_bucket_thresholds(self):
+        """Test configurable confidence buckets."""
+        thresholds = {'low': 0.3, 'high': 0.7}
+        signal = TradeSignal(
+            direction=SignalDirection.LONG,
+            conviction=0.5,
+            symbol='ETHUSDT',
+            timeframe='1h',
+            confidence_bucket_thresholds=thresholds,
+        )
+        assert signal.confidence_bucket == 'MEDIUM'
+
+        strong = TradeSignal(
+            direction=SignalDirection.LONG,
+            conviction=0.9,
+            symbol='ETHUSDT',
+            timeframe='1h',
+            confidence_bucket_thresholds=thresholds,
+        )
+        assert strong.confidence_bucket == 'HIGH'
     
     def test_is_actionable(self):
         """Test actionable signal filter."""
@@ -393,6 +422,25 @@ class TestSignalEngine:
         assert signal.agreeing_strategies == 2
         assert signal.agreement_ratio == 1.0
         assert signal.regime == RegimeType.TRENDING
+
+    def test_timeframe_alignment_score(self):
+        """Test multi-timeframe confluence alignment score."""
+        engine = SignalEngine()
+        engine.register_strategy('ema_rsi')
+
+        signal = engine.generate_signal(
+            strategy_outputs={'ema_rsi': {'signal': 'LONG'}},
+            symbol='BTCUSDT',
+            timeframe='1h',
+            timeframe_signals={
+                '5m': 'LONG',
+                '15m': 'LONG',
+                '4h': 'SHORT',
+            },
+        )
+
+        assert signal.timeframe_alignment_score == pytest.approx(2/3, rel=0.01)
+        assert signal.explanation
     
     def test_risk_context_integration(self):
         """Test risk context in signal generation."""
@@ -410,6 +458,44 @@ class TestSignalEngine:
         
         assert signal.risk_flags.volatility_spike
         assert signal.risk_flags.low_liquidity
+
+    def test_signal_decay(self):
+        """Test conviction decay over time."""
+        engine = SignalEngine(decay_half_life_seconds=900)
+        engine.register_strategy('ema_rsi')
+
+        past_time = (datetime.now(timezone.utc) - timedelta(seconds=900)).isoformat()
+
+        signal = engine.generate_signal(
+            strategy_outputs={'ema_rsi': {'signal': 'LONG'}},
+            symbol='BTCUSDT',
+            timeframe='1h',
+            signal_timestamp=past_time,
+        )
+
+        assert signal.age_seconds >= 900 - 5  # allow small timing drift
+        assert signal.decayed_conviction < signal.conviction
+        expected = signal.conviction * 0.5  # half-life decay
+        assert signal.decayed_conviction == pytest.approx(expected, rel=0.15)
+
+    def test_explanation_payload(self):
+        """Test explanation includes agreement, regime, risk, and decay info."""
+        engine = SignalEngine()
+        engine.register_strategy('ema_rsi')
+
+        signal = engine.generate_signal(
+            strategy_outputs={'ema_rsi': {'signal': 'LONG'}},
+            symbol='BTCUSDT',
+            timeframe='1h',
+            regime='TRENDING',
+            timeframe_signals={'15m': 'LONG', '4h': 'LONG'},
+            signal_timestamp=(datetime.now(timezone.utc) - timedelta(seconds=300)).isoformat(),
+        )
+
+        explanation = signal.explanation
+        assert "Consensus" in explanation
+        assert "Regime" in explanation or "regime" in explanation
+        assert "Risks" in explanation
     
     def test_batch_generation(self):
         """Test batch signal generation."""
