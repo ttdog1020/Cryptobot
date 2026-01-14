@@ -119,7 +119,7 @@ return df
    ```
 
 2. **References found (all to strategies/):**
-   - `validation/safety_suite.py:20` → `from strategies.ema_rsi import add_indicators`
+   - `validation/safety_suite.py:20` → `from strategies.simple_ema_rsi import add_indicators`
    - `sweep_macd_params.py:10` → `from strategies.macd_only import add_indicators`
    - `strategy_engine.py:111` → `from strategies.macd_rsi_adx import add_indicators_macd_rsi_adx`
 

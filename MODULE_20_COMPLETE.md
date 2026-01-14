@@ -486,7 +486,7 @@ except AssertionError as e:
 
 ```python
 from validation.synthetic_data import generate_trend_series
-from strategies.ema_rsi import add_indicators, generate_signal
+from strategies.simple_ema_rsi import add_indicators, generate_signal
 
 # Generate test data
 df = generate_trend_series(
