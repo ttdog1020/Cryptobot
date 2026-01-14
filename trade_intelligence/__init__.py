@@ -32,6 +32,7 @@ from .signal_model import (
 from .signal_engine import SignalEngine
 from .confidence import ConfidenceCalculator
 from .risk_context import RiskContextAnalyzer
+from .dashboard import DashboardFormatter, filter_actionable
 
 __all__ = [
     'TradeSignal',
@@ -42,4 +43,6 @@ __all__ = [
     'SignalEngine',
     'ConfidenceCalculator',
     'RiskContextAnalyzer',
+    'DashboardFormatter',
+    'filter_actionable',
 ]
