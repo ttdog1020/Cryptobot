@@ -1,18 +1,9 @@
 import os
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
-
-import ccxt
-import pandas as pd
-from dotenv import load_dotenv
-
-import os
-from pathlib import Path
 import csv
-from datetime import datetime, timezone
-import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 import ccxt
