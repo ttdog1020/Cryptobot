@@ -35,6 +35,8 @@ logs_backup_*/
 *.csv
 *.jsonl
 data/
+artifacts/nightly/  # Nightly run artifacts (ignored)
+artifacts/*.csv     # Generated reports
 
 # Virtual environments
 venv/

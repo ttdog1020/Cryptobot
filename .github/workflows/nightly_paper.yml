@@ -1,0 +1,66 @@
+name: Nightly Paper Trading
+
+on:
+  schedule:
+    # Run nightly at 03:00 UTC (adjust as needed)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: 'Paper session duration in minutes'
+        required: false
+        default: '15'
+
+jobs:
+  paper-trading:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout staging branch
+      uses: actions/checkout@v4
+      with:
+        ref: staging
+        fetch-depth: 1
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run nightly paper trading session
+      env:
+        TRADING_MODE: paper
+        CI_MODE: "true"
+        NIGHTLY_RUN: "true"
+      run: |
+        mkdir -p artifacts/nightly
+        python scripts/run_nightly_paper.py \
+          --output-dir artifacts/nightly \
+          --duration-minutes 15 \
+          --deterministic
+    
+    - name: Generate report
+      if: always()
+      run: |
+        python analytics/paper_report.py \
+          --log-file artifacts/nightly/trades.csv \
+          --output-format json,markdown \
+          --output-dir artifacts/nightly
+    
+    - name: Upload paper trading artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: nightly-paper-trading
+        path: artifacts/nightly/
+        retention-days: 7
+    
+    - name: Publish results to job summary
+      if: always()
+      run: |
+        python scripts/generate_summary.py artifacts/nightly >> $GITHUB_STEP_SUMMARY

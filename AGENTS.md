@@ -4,6 +4,8 @@
 
 This repository is designed for **autonomous agent development** via PR-based workflows. Follow these rules to ensure safe, high-quality contributions.
 
+All PRs should target the **`staging` branch** (not main). Main is protected and requires manual approval.
+
 ---
 
 ## ⚠️ CRITICAL SAFETY RULES
