@@ -6,10 +6,12 @@
 pandas>=2.0.0
 ccxt>=4.0.0
 PyYAML>=6.0
+python-dotenv>=1.0.0
 
 # Data processing
 numpy>=1.24.0
 ta-lib>=0.4.0  # Technical analysis library (optional, for advanced indicators)
+ta>=0.10.0     # Alternative technical analysis package
 
 # WebSocket streaming
 websockets>=11.0
