@@ -1,0 +1,115 @@
+# Fee and Slippage Configuration
+#
+# Controls realistic execution cost modeling for paper trading and backtests.
+# Adjust these settings to match your exchange and trading volume profile.
+
+# Fee Schedule Settings
+fee_schedule:
+  exchange: "binance"                   # Exchange name (currently only binance supported)
+  
+  # Fee tier (based on 30-day trading volume in BTC)
+  # Options: regular, vip0, vip1, vip2, vip3, vip4
+  tier: "regular"                       # Regular: < 50 BTC/30d
+  
+  # BNB discount (Binance-specific)
+  use_bnb_discount: false               # 25% fee discount when paying with BNB
+  
+  # Maker/taker assumption
+  default_is_maker: false               # Assume taker orders by default (more conservative)
+  
+  # Auto-update tier based on simulated volume
+  auto_update_tier: false               # Track volume and upgrade tier automatically
+  monthly_volume_btc: 0.0               # Starting simulated volume
+
+# Dynamic Slippage Model
+slippage:
+  # Base slippage for small orders in liquid markets
+  base_slippage: 0.0005                 # 0.05% (5 bps)
+  
+  # Volatility adjustment
+  volatility_multiplier: 1.0            # How much volatility increases slippage
+  
+  # Maximum slippage cap
+  max_slippage: 0.01                    # 1.0% maximum
+  
+  # Order size impact
+  # Slippage increases with order size relative to market volume
+  enable_volume_impact: true
+  volume_impact_scale: 100.0            # Multiplier for volume ratio impact
+  
+  # Time-based adjustments (optional, for future enhancement)
+  enable_time_based: false
+  low_liquidity_hours: [0, 1, 2, 3, 4, 5, 23]  # UTC hours with lower liquidity
+
+# Bid-Ask Spread Model
+spread:
+  # Base spread in basis points (1 bps = 0.01%)
+  base_spread_bps: 5.0                  # 5 bps = 0.05%
+  
+  # Volatility widens spread
+  volatility_multiplier: 10.0           # How much volatility widens spread
+  
+  # Spread limits
+  min_spread_bps: 1.0                   # Minimum spread (tight market)
+  max_spread_bps: 50.0                  # Maximum spread (volatile/illiquid market)
+  
+  # Volume tightens spread
+  volume_tightening_factor: 1.0         # Higher volume = tighter spread
+
+# Realistic Execution Integration
+execution:
+  # Enable realistic execution costs
+  enabled: true                         # Set to false to use flat commission/slippage
+  
+  # Fallback to simple model if market data unavailable
+  fallback_to_simple: true
+  
+  # Simple model defaults (used when no market data available)
+  simple_defaults:
+    order_size_ratio: 0.001             # Assume 0.1% of daily volume
+    volatility: 0.01                    # Assume 1% volatility
+  
+  # Execution price calculation
+  use_spread_for_fills: true            # Fill at bid/ask instead of mid
+  
+  # Partial fills (future enhancement)
+  allow_partial_fills: false
+  partial_fill_probability: 0.05        # 5% chance of partial fill
+
+# Preset Profiles
+profiles:
+  # Conservative (retail trader, regular tier)
+  conservative:
+    tier: "regular"
+    use_bnb_discount: false
+    base_slippage: 0.0008               # 0.08%
+    base_spread_bps: 8.0
+  
+  # Moderate (active trader, VIP 0-1)
+  moderate:
+    tier: "vip0"
+    use_bnb_discount: true
+    base_slippage: 0.0005               # 0.05%
+    base_spread_bps: 5.0
+  
+  # Aggressive (high-volume trader, VIP 2+)
+  aggressive:
+    tier: "vip2"
+    use_bnb_discount: true
+    base_slippage: 0.0003               # 0.03%
+    base_spread_bps: 3.0
+
+# Active Profile
+active_profile: "conservative"          # Which preset to use (conservative | moderate | aggressive)
+
+# Logging
+logging:
+  log_execution_costs: true             # Log detailed cost breakdown
+  log_file: "logs/execution_costs.csv"  # Cost log file
+  
+# Validation
+validation:
+  # Warn if costs exceed thresholds
+  warn_if_commission_exceeds_pct: 0.5   # Warn if commission > 0.5%
+  warn_if_slippage_exceeds_pct: 0.5     # Warn if slippage > 0.5%
+  warn_if_total_cost_exceeds_pct: 1.0   # Warn if total cost > 1.0%
