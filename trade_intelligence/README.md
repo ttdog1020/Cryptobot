@@ -286,9 +286,38 @@ Expected coverage: >80%
 - Historical backtest stats per strategy (for weighted conviction)
 - Regime detection from live OHLCV
 - Correlation analysis (are strategies truly independent?)
-- Performance dashboard integration
-- Discord/Slack webhook formatting
+- ~~Performance dashboard integration~~ ✅ DONE (see dashboard.py)
 - A/B testing framework for confidence configs
+
+## Dashboard Integration
+
+The `dashboard.py` module provides formatters for displaying signals:
+
+```python
+from trade_intelligence import DashboardFormatter, filter_actionable
+
+# Terminal display with colors
+print(DashboardFormatter.format_terminal(signal))
+
+# Discord webhook
+import requests
+embed = DashboardFormatter.format_discord(signal)
+requests.post(webhook_url, json={'embeds': [embed]})
+
+# Slack webhook
+payload = DashboardFormatter.format_slack(signal)
+requests.post(webhook_url, json=payload)
+
+# Filter actionable signals
+actionable = filter_actionable(
+    signals,
+    min_conviction=0.6,
+    exclude_flat=True,
+    max_risk_flags=1,
+)
+```
+
+See [Dashboard Formatter](dashboard.py) for full API.
 
 ## References
 
