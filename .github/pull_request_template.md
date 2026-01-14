@@ -12,6 +12,18 @@
 
 ---
 
+## Type of Change
+<!-- Mark relevant options with 'x' -->
+- [ ] Bug fix (fixes an issue)
+- [ ] New feature (adds functionality)
+- [ ] Breaking change (changes existing functionality)
+- [ ] Documentation update
+- [ ] Refactoring / code cleanup
+- [ ] Performance improvement
+- [ ] Security fix
+
+---
+
 ## How to Run/Test
 
 <!-- Provide exact commands to test this PR -->
@@ -79,6 +91,24 @@ python -m backtests.config_backtest --config config/your_config.yaml
 - [ ] Strategies only return TradeIntent (never place orders directly)
 - [ ] No live trading paths enabled (unless explicitly requested in issue)
 - [ ] Safety limits unchanged (unless explicitly requested in issue)
+
+---
+
+## Labels for Release Notes
+
+<!-- Add appropriate labels to help categorize this PR in release notes -->
+
+**Please add at least one category label:**
+- `enhancement` / `feature` → "Added" in release notes
+- `bug` / `fix` → "Fixed" in release notes
+- `security` → "Security" in release notes
+- `refactor` / `chore` → "Changed" in release notes
+- `docs` / `documentation` → "Changed" in release notes
+
+**Risk/Impact labels (recommended):**
+- `risk:low` / `risk:med` / `risk:high`
+- `impact:low` / `impact:med` / `impact:high`
+
 - [ ] Code follows existing patterns and conventions
 - [ ] Docstrings added to new functions/classes
 - [ ] No `print()` statements (using `logger` instead)

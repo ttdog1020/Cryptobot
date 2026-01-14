@@ -1,0 +1,43 @@
+name: Generate Release Notes
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git log
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Generate release notes
+        run: |
+          python scripts/release_notes.py
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet CHANGELOG.md release_notes/ || echo "has_changes=true" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md release_notes/
+          git commit -m "docs: auto-generate release notes [skip ci]"
+          git push
