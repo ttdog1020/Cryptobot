@@ -20,7 +20,7 @@ from . import invariants
 from . import synthetic_data
 
 # Import trading system components
-from strategies.ema_rsi import add_indicators, generate_signal
+from strategies.simple_ema_rsi import add_indicators, generate_signal
 from execution.paper_trader import PaperTrader
 from execution.execution_engine import ExecutionEngine
 from execution.order_types import OrderRequest, OrderSide, OrderType

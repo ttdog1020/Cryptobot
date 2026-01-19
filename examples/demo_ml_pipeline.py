@@ -15,7 +15,7 @@ from pathlib import Path
 
 from ml_pipeline.train import train_pipeline
 from ml_pipeline.features import build_feature_matrix
-from strategies.ml_based import MLStrategy
+from strategies.ml_strategy import MLStrategy
 
 # Configure logging
 logging.basicConfig(
